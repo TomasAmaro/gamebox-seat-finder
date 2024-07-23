@@ -1,4 +1,5 @@
 const baseUrl = 'https://gamebox.sporting.pt/api';
+const fs = require('node:fs/promises');
 
 const scriptArguments = { 
     memberNumber: {
@@ -142,19 +143,18 @@ const parseSeatsMap = (seatMap) => {
     return parsedSeatsMap;
 };
 
-const getAvailableSeats = (row) => {
+const filterAvailableSeats = (row) => {
     return row.seats.filter(seat => seat.isAvailable);;
 }
 
-const isSeatAvailable = async (options) => {
+const getAvailableSeats = async (options) => {
     const { numberOfSeats, sectorType} = options;
-    try {
     const zones = await zonesService(sectorType);
     const availableZones = (await Promise.all(zones.map(async zone => {
             const seats = await seatService(zone.id);
             const parsedSeatMap = parseSeatsMap(seats.map);
             const availableSeats = parsedSeatMap.flatMap(row => {
-                const availableSeats = getAvailableSeats(row);
+                const availableSeats = filterAvailableSeats(row);
                 if (availableSeats) {
                  return availableSeats.map(seat => ({row: row.row, ...seat}));
                 }
@@ -173,13 +173,21 @@ const isSeatAvailable = async (options) => {
                 [zone.name]: availableSeats
             };
     }))).filter(zone => zone);
-    return console.log(JSON.stringify(availableZones, null, 2));
-    } catch (error) {
-    console.error(error);    
-    }
+    return availableZones;
 };
 
-const arguments = argumentsService().getAllValues();
-console.log(arguments);
+( async () => {
+    try {
+        const arguments = argumentsService().getAllValues();
+        console.log(arguments);
 
-isSeatAvailable(arguments);
+        const seatsAvailable = await getAvailableSeats(arguments);
+        const templateHtml = await fs.readFile('template.html', 'utf-8');
+        const jsonData = JSON.stringify(seatsAvailable, null, 2);
+        const dir = await fs.mkdir('output', {recursive: true});
+        await fs.writeFile(`${dir}/output.json`, jsonData);
+        await fs.writeFile(`${dir}/index.html`, templateHtml.replace('//$tableData', `tableData = ${jsonData}`));   
+    } catch (error) {
+        console.error(error);
+    }
+})()

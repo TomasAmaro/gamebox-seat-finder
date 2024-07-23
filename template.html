@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gamebox 24/25</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Ropa+Sans:ital@0;1&display=swap");
+      body {
+        display: flex;
+        flex-direction: column;
+        background: -webkit-linear-gradient(left, #25c481, #25b7c4);
+        background: linear-gradient(to right, #25c481, #25b7c4);
+        font-family: "Ropa Sans", sans-serif;
+        justify-content: center;
+        align-items: center;
+        margin: 0;
+        gap: 4rem;
+        padding-bottom: 4rem;
+      }
+      button {
+        background: none;
+        color: inherit;
+        border: none;
+        padding: 0;
+        font: inherit;
+        cursor: pointer;
+        outline: inherit;
+        margin-left: 1rem;
+      }
+      h1 {
+        font-size: 4rem;
+        color: #fff;
+        text-transform: uppercase;
+        font-weight: 300;
+        text-align: center;
+        margin-bottom: 1rem;
+      }
+      table {
+        width: 100%;
+        table-layout: fixed;
+      }
+      .container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        height: 70vh;
+        max-width: 80vw;
+      }
+      .tbl-header {
+        background-color: rgba(255, 255, 255, 0.3);
+      }
+      .tbl-content {
+        overflow-x: auto;
+        margin-top: 0;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+      }
+      th {
+        padding: 1.25rem 1rem;
+        text-align: left;
+        font-weight: 500;
+        font-size: 2rem;
+        color: #fff;
+        text-transform: uppercase;
+      }
+      td {
+        padding: 1rem;
+        text-align: left;
+        vertical-align: middle;
+        font-weight: 300;
+        font-size: 2.5rem;
+        color: #fff;
+        border-bottom: solid 1px rgba(255, 255, 255, 0.1);
+      }
+      header {
+        max-height: 10vh;
+        background-color: #ffff;
+        width: 100%;
+      }
+      header > div {
+        display: flex;
+        flex-direction: row;
+        color: #000000;
+        align-items: center;
+        gap: 1.5rem;
+        padding: 1.5rem;
+        font-size: 1.5rem;
+      }
+      img {
+        max-height: 4.5rem;
+        width: auto;
+      }
+      footer {
+        color: #fff;
+        font-size: 1.5rem;
+        margin-top: 1rem;
+        text-align: center;
+      }
+      footer > * > a {
+        text-decoration: none;
+        color: inherit;
+      }
+    </style>
+    <script type="module">
+      import {
+        html,
+        Component,
+        render,
+        useState,
+      } from "https://unpkg.com/htm/preact/standalone.module.js";
+
+      const sortCategory = (a, b) => {
+        const aSector = a[0][1];
+        const bSector = b[0][1];
+        const sectorNumber = (name) => name.match(/\d+/)[0];
+        return sectorNumber(aSector) - sectorNumber(bSector);
+      };
+
+      let tableData;
+      //$tableData
+
+      const dataFields = ["sectorName", "row", "seatNumber", "seatId"];
+
+      const Table = () => {
+        const sortTypes = {
+          up: {
+            icon: "⬆️",
+            fn: (a, b) => sortCategory(a, b),
+          },
+          down: {
+            icon: "⬇️",
+            fn: (a, b) => sortCategory(b, a),
+          },
+        };
+
+        const [currentSort, setCurrentSort] = useState({
+          direction: "down",
+          field: "row",
+        });
+
+        const data = tableData.flatMap((sector) => {
+          const sectorName = Object.keys(sector)[0];
+
+          return [...sector[sectorName]].map((seat) => {
+            return Object.entries({
+              sectorName,
+              ...seat,
+            });
+          });
+        });
+
+        const [displayData, setDisplayData] = useState(
+          data.sort(sortTypes.down.fn)
+        );
+
+        const onSortChange = (field) => {
+          const nextSort = currentSort.direction === "down" ? "up" : "down";
+          setCurrentSort({ direction: nextSort, field });
+          setDisplayData(displayData.sort(sortTypes[nextSort].fn));
+        };
+
+        return (
+          data.length > 0 &&
+          html`
+            <div class="tbl-header">
+              <h1>Category A > 24/25 > +5 seats</h1>
+              <table>
+                <thead>
+                  <tr>
+                    ${dataFields.map((field) => {
+                      if (field === "sectorName") {
+                        return html`
+                          <th id=${field}>
+                            ${field}
+                            <button onClick="${() => onSortChange(field)}">
+                              <span
+                                >${sortTypes[currentSort.direction].icon}</span
+                              >
+                            </button>
+                          </th>
+                        `;
+                      } else {
+                        return html` <th id=${field}>${field}</th> `;
+                      }
+                    })}
+                  </tr>
+                </thead>
+              </table>
+            </div>
+            <div class="tbl-content">
+              <table>
+                <tbody>
+                  ${displayData.map(
+                    (mappedSeat) =>
+                      html`
+                        <tr>
+                          ${mappedSeat.map(([key, value]) => {
+                            if (dataFields.includes(key)) {
+                              return html`<td headers=${key}>${value}</td>`;
+                            }
+                          })}
+                        </tr>
+                      `
+                  )}
+                </tbody>
+              </table>
+            </div>
+          `
+        );
+      };
+
+      class App extends Component {
+        render() {
+          return html`
+            <header>
+              <div>
+                <img src="https://gamebox.sporting.pt/assets/images/logo.svg" />
+                <span>Gamebox Available Seats</span>
+              </div>
+            </header>
+            <div class="container">
+              <${Table} />
+            </div>
+            <footer>
+              <div class="gb-footer">
+                Saudações Leoninas 🦁 by ${" "}
+                <a
+                  target="_blank"
+                  href="https://github.com/TomasAmaro/gamebox-seat-finder"
+                >
+                  RE47</a
+                >
+              </div>
+              <div>
+                <a
+                  target="_blank"
+                  href="https://github.com/TomasAmaro/gamebox-seat-finder"
+                  >Github</a
+                >
+              </div>
+            </footer>
+          `;
+        }
+      }
+
+      render(html`<${App} />`, document.body);
+    </script>
+  </head>
+</html>
